@@ -1,6 +1,6 @@
-;;;; cl-utility.lisp
+;;;; threading.lisp
 
-(in-package #:cl-utility)
+(in-package #:cl-utility/threading)
 
 
 (defun atom-to-list (arg)

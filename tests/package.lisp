@@ -1,4 +1,4 @@
 ;;;; package.lisp
 
 (defpackage #:cl-utility/tests
-  (:use #:cl #:prove #:cl-utility))
+  (:use #:cl #:prove #:cl-utility/threading))

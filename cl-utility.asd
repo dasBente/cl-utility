@@ -8,6 +8,7 @@
   :serial t
   :depends-on (#:let-over-lambda)
   :components ((:file "package")
+               (:file "threading")
                (:file "cl-utility"))
   :in-order-to ((test-op (test-op :cl-utility/tests))))
 
