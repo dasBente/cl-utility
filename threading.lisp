@@ -10,21 +10,21 @@
 
 (defmacro thread (init-arg symb form)
   "Helper macro that threads init-arg into form at the point designated by _"
-  (let* ((count 0)
-         (new-form (loop for l in form collect
-                        (if (eql l symb) (progn (incf count) init-arg) l))))
-    (cond ((= 0 count) (error "Form ~a should contain symbol ~a but does not." form symb))
-          ((> count 1) (error "Form ~a contains more than one instance of ~a." form symb))
-          (t new-form))))
+  (if (atom form) 
+      `(,form ,init-arg)
+      (let* ((count 0)
+             (new-form (loop for l in form collect
+                            (if (eql l symb) (progn (incf count) init-arg) l))))
+        (cond ((= 0 count) (error "Form ~a should contain symbol ~a but does not." form symb))
+              ((> count 1) (error "Form ~a contains more than one instance of ~a." form symb))
+              (t new-form)))))
 
 
-(defmacro as-> (init-arg symb &body body)
+(defmacro as-> (symb init-arg &body body)
   "Function composition macro where the threading can be controlled using a chosen symbol.
 Left to right."
   (if body
-      (if (atom (car body)) 
-          `(as-> (,(car body) ,init-arg) ,symb ,@(cdr body))
-          `(as-> (thread ,init-arg ,symb ,(car body)) ,symb ,@(cdr body)))
+      `(as-> ,symb (thread ,init-arg ,symb ,(car body)) ,@(cdr body))
       init-arg))
 
 
@@ -47,8 +47,7 @@ Left to right."
 (defmacro <-as (symb &body body)
   "Function composition macro where the threading can be controlled using a chosen symbol. 
 Right to left"
-  (destructuring-bind (init-arg &rest args) (reverse body)
-    `(as-> ,init-arg ,symb ,@args)))
+  `(as-> ,symb ,@(reverse body)))
 
 
 (defmacro <- (&body body)
