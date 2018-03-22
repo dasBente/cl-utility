@@ -5,4 +5,5 @@
   (:export #:-> #:->> #:<- #:<<- #:as-> #:<-as))
 
 (defpackage #:cl-utility
-  (:use #:cl))
+  (:use #:cl)
+  (:export #:\\ #:destructuring-lambda #:f-and #:f-or #:multi-compare))

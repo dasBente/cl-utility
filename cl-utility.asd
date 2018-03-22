@@ -19,6 +19,7 @@
   :pathname "tests/"
   :serial t
   :components ((:file "package")
+               (:file "threading")
                (:file "core"))
   :perform (test-op :after (o c)
                     (funcall (intern #.(string :run) :prove) c)))

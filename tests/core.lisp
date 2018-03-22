@@ -4,118 +4,106 @@
 
 (plan 6)
 
-(setf prove:*debug-on-error* nil)
-
-#| 
-The <- macro allows for chaining multiple "partial" functions after another by passing the following 
-function as the first argument of it's predecessor. The resulting expression is thus built right
-to left.
-  (<- f (g 2) (h 3) x) is meant to represent f(g(h(x, 3), 2)). 
+#|
+The f-or function is meant to be a variant of the or macro to be used in higher order functions.
+  (f-or (zerop 2) (plusp -1) 5) ;; => 5
 |#
-(subtest "Testing <- macro"
-  ;; Simple function chaining using only unary functions
-  (is 3 (<- 1+ 1+ 1+ 0))
+(subtest "Testing f-or"
+  ;; Empty arg list
+  (is (f-or) nil)
 
-  ;; Some tests using higher arity expressions
-  (is 3 (<- (/ 2) (* 3) (+ 2) 0))
-  (is '((1 . 2) . 3) (<- (cons 3) (cons 2) 1))
-
-  ;; Empty argument list
-  (is 3 (<- 3)))
+  ;; Some args
+  (is (f-or t) t)
+  (is (f-or (zerop 2) (plusp -1) 5) 5)
+  (is (f-or 1 2 3) 1)
+  (is (f-or nil) nil))
 
 #|
-The <<- macro allows for chaining multiple "partial" functions after another by passing the following
-function as the last argument of it's predecessor. The resulting expression is thus built right 
-to left.
-  (<<- f (g 2) (h 3) x) is meant to represent f(g(2, h(3, x))).
+The f-and function is meant to be a variant of the and macro to be used in higher order functions.
+  (f-and (zerop 0) (plusp 1) 5) ;; => 5
 |#
-(subtest "Testing <<- macro"
-  ;; Simple function chaining using only unary functions
-  (is 3 (<<- 1+ 1+ 1+ 0))
-
-  ;; Some tests using higher arity expressions
-  (is 2/6 (<<- (/ 2) (* 3) (+ 2) 0))
-  (is '(1 2 . 3) (<<- (cons 1) (cons 2) 3))
-  (is '(1 2 3) (<<- (concatenate 'list '(1)) (cons 2) (cons 3) 'nil))
+(subtest "Testing f-and"
+  ;; Empty arg list
+  (is (f-and) t)
   
-  ;; Empty argument list
-  (is 3 (<<- 3)))
+  ;; Some args 
+  (is (f-and t) t)
+  (is (f-and (zerop 0) (plusp 1) 5) 5)
+  (is (f-and (zerop 0) (plusp -1) 5) nil)
+  (is (f-and nil) nil))
 
 #|
-Analogously to Clojures -> threading macro. Like <- but reads from left to right.
-  (-> x f (g 2) (h 3)) is meant to represent h(g(f(x), 2), 3).
+The multi-compare function compares it's reference value to a list of other possible values using
+a specified test function (implicitly set to #'eql) and accumulating the result (implicitly set to
+#'f-or).
+  (multi-compare 'a '(a b c d) :test #'eql :acc #'f-or) ;; => 'a 
 |#
-(subtest "Testing -> macro"
-  ;; Simple function chaining using only unary functions
-  (is 3 (-> 0 1+ 1+ 1+))
-
-  ;; Some tests using higher arity expressions
-  (is 5 (-> 0 (+ 2) (/ 2) (* 5)))
-  (is '((1 . 2) . 3) (-> 1 (cons 2) (cons 3)))
-
-  ;; Empty argument list
-  (is 3 (-> 3)))
+(subtest "Testing multi-compare"
+  (is (multi-compare 'a '(a b c d) :test #'eql :acc #'f-or) t)
+  (is (multi-compare 'a '(a b c d) :test #'eql :acc #'f-and) nil)
+  (is (multi-compare 5 '(6 7 8 9) :test #'< :acc #'f-or) t)
+  (is (multi-compare 5 '(6 7 8 9) :test #'> :acc #'f-or) nil)
+  (is (multi-compare 0 '(1 2 3 4) :test #'+ :acc #'+) 10))
 
 #|
-Analogously to Clojures ->> threading macro. Like <<- but reads from left to right.
+The destructuring-lambda macro enables using list destructuring in lambda function definitions.
+  (destructuring-lambda (a (b c) &rest d) (concatenate 'list (list a b c) d))
 |#
-(subtest "Testing ->> macro"
-  ;; Simple function chaining using only unary functions
-  (is 3 (->> 0 1+ 1+ 1+))
- 
-  ;; Some tests using higher arity expressions
-  (is 3/4 (->> 0 (+ 2) (* 2) (/ 3)))
-  (is '(1 2 3) (->> '() (cons 3) (cons 2) (cons 1)))
+(subtest "Testing destructuring-lambda - Non-destructuring calls (normal lambda)"
+  ;; 0-arity
+  (is-expand (destructuring-lambda () 5) (lambda () 5))
+  ;(ok (equal (macroexpand '(destructuring-lambda () 5)) '#'(lambda () 5)))
+  (is (funcall (destructuring-lambda () 5)) 5)
+
+  ;; multiple-arity
+  (is-expand (destructuring-lambda (a b) (+ a b)) (lambda (a b) (+ a b)))
+  (is (funcall (destructuring-lambda (a b) (+ a b)) 3 5) 8)
+
+  ;; keys
+  (let ((f (destructuring-lambda (&key a) a)))
+    (is (funcall f) nil)
+    (is (funcall f :a 'hello) 'hello))
   
-  ;; Empty argument list
-  (is 3 (->> 3)))
+  ;; keys with default value (TODO)
+  (let ((f (destructuring-lambda (&key (a 0)) a)))
+    (is (funcall f) 0)
+    (is (funcall f :a 1) 1))
 
-#|
-Analogously to Clojures as-> threading macro. A symbol can be chosen which will then be substituted
-by the already assembled expression starting from the left. A function atom will be treated as a
-unary function and does not require the substitution symbol.
-The substitution symbol has to be explicitly given for any non-atom expression.
-  (as-> _ x f (g _ 2) (h 3 _)) is meant to represent h(3, g(f(x), 2)).
-|#
-(subtest "Testing as-> macro"
-  ;; Simple function chaining using only unary functions
-  (is 3 (as-> _ 0 1+ 1+ 1+))
+  ;; optionals
+  (let ((f (destructuring-lambda (&optional a) a)))
+    (is (funcall f) nil)
+    (is (funcall f 'hello) 'hello))
 
-  ;; Some tests using higher arity expressions
-  (is -5 (as-> _ 0 (- _ 10) (* 2 _) (/ _ 4)))
-  (is '((2 1) . 3) (as-> _ '() (cons 1 _) (cons 2 _) (cons _ 3)))
+  ;; optionals with default values (TODO)
+  (let ((f (destructuring-lambda (&optional (a 0)) a)))
+    (is (funcall f) 0)
+    (is (funcall f 1) 1))
 
-  ;; Problem with testing read time evaluation errors
-  ;; Error if at least one form does not contain a substitution symbol
-  ;; (is-error (as-> 0 _ (+ 1 _) (+ 2)) 'error)
+  ;; rest 
+  (let ((f (destructuring-lambda (&rest a) a)))
+    (is (funcall f) nil)
+    (is (funcall f 'hello) '(hello)))
 
-  ;; Error if a form contains more than one instance of _
-  ;; (is-error (as-> 0 _ (+ 1 _) (+ 2 _ _)) 'error)
-  
-  ;; Empty argument list
-  (is 3 (as-> _ 3)))
-
-#|
-Like as-> but read right to left (except the substitution symbol).
-  (<-as _ f (g _ 2) (h 3 _) x) is meant to represent f(g(h(3, x), 2)).
-|#
-(subtest "Testing <-as macro"
-  ;; Simple function chaining using only unary functions
-  (is 3 (<-as _ 1+ 1+ 1+ 0))
-
-  ;; Some tests using higher arity expressions
-  (is -5 (<-as _ (/ _ 4) (* 2 _) (- _ 10) 0))
-  (is '(1 2 nil . 3) (<-as _ (cons 1 _) (cons 2 _) (cons _ 3) '()))
-  
-  ;; Problems with testing read time evaluation errors
-  ;; Error if at least one form does not contain a substitution symbol
-  ;; (is-error (<-as _ (+ 1 _) (+ 2) 0) 'error)
-
-  ;; Error if a form contains more than one instance of _
-  ;; (is-error (<-as _ (+ 1 _ _) (+ 2 _) 0) 'error)
-  
-  ;; Empty argument list
-  (is 3 (<-as _ 3))
+  ;; insufficient argument count
+  ;(is-error (funcall (destructuring-lambda (a) a)) 'error)
   )
+
+(subtest "Testing destructuring-lambda - Destructuring calls"
+  ;; gensyms are used as substitutes for destructuring lambda lists, so expansion testing won't work
+  (is (funcall (destructuring-lambda (a (b c)) (list a b c)) 'a '(b c)) '(a b c))
+  (is (funcall (destructuring-lambda (a &rest b) (list a b)) 'a 'b 'c) '(a (b c)))
+  (is (funcall (destructuring-lambda (&optional a) a)) nil)
+  (is (funcall (destructuring-lambda (&optional a) a) 42) 42)
+  
+  ;; errors for insufficient arguments being supplied to a destructured argument
+  ;;(is-error (funcall (destructuring-lambda ((a b)) (+ a b)) '(1)) 'error)
+  )
+
+(subtest "Testing destructuring-lambda - Nested destructuring calls"
+  (is (funcall (destructuring-lambda (a (b (c))) (list a b c)) 'a '(b (c))) '(a b c))
+  (is (funcall (destructuring-lambda (a (b &rest c)) (list a b c)) 'a '(b c)) '(a b (c)))
+  (let ((f (destructuring-lambda (a (b &optional c) d) (list a b c d))))
+    (is (funcall f 'a '(b) 'd) '(a b nil d))
+    (is (funcall f 'a '(b c) 'd) '(a b c d))))
 
 (finalize)
