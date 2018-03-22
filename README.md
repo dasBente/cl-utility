@@ -1,9 +1,4 @@
 # cl-utility
-### _Your Name <your.name@example.com>_
+### _Tobias Möhring <dasbente@gmail.com>_
 
-This is a project to do ... something.
-
-## License
-
-Specify license here
-
+Collection of utility functions and macros.
