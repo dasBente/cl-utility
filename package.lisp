@@ -6,4 +6,4 @@
 
 (defpackage #:cl-utility
   (:use #:cl)
-  (:export #:\\ #:destructuring-lambda #:f-and #:f-or #:multi-compare))
+  (:export #:\\ #:destructuring-lambda #:f-and #:f-or #:multi-compare #:destructuring-let))

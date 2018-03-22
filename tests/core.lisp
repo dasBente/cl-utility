@@ -2,7 +2,7 @@
 
 (in-package #:cl-utility/tests)
 
-(plan 6)
+(plan 8)
 
 #|
 The f-or function is meant to be a variant of the or macro to be used in higher order functions.
@@ -105,5 +105,27 @@ The destructuring-lambda macro enables using list destructuring in lambda functi
   (let ((f (destructuring-lambda (a (b &optional c) d) (list a b c d))))
     (is (funcall f 'a '(b) 'd) '(a b nil d))
     (is (funcall f 'a '(b c) 'd) '(a b c d))))
+
+#|
+The destructuring-let macro employs destructuring directly within a let* form.
+  (destructuring-let (((a &rest b) '(1 2 3))) (list a b)) => '(1 (2 3))
+|#
+(subtest "Testing destructuring-let - No destructuring"
+  (is (destructuring-let (a) a) 'nil)
+  (is (destructuring-let ((a 1)) a) 1)
+  (is (destructuring-let ((a '(1)) (b (car a))) b) 1))
+
+(subtest "Testing destructuring-let - Destructuring"
+  (is (destructuring-let ((&rest a)) a) nil)
+  (let ((lst '(1 (2 3) 4 5)))
+    (is (destructuring-let (((a (b c) d e) lst)) (list a b c d e)) '(1 2 3 4 5))
+    (is (destructuring-let (((a b &rest c) lst)) (list a b c)) '(1 (2 3) (4 5))))
+  
+  (let ((lst '(1 2 3)))
+    (is (destructuring-let (((a b c &optional d) lst)) (list a b c d)) '(1 2 3 nil))
+    (is (destructuring-let (((a b &optional c d) lst)) (list a b c d)) '(1 2 3 nil))
+    (is (destructuring-let (((a b c &optional (d 4)) lst)) (list a b c d)) '(1 2 3 4))
+    (is (destructuring-let (((a b &optional (c t)) lst)) (list a b c)) '(1 2 3))
+    (is (destructuring-let (((a b &optional (c t) (d 4)) lst)) (list a b c d)) '(1 2 3 4))))
 
 (finalize)

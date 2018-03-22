@@ -78,3 +78,7 @@
       (destructuring-bind (vars forms) (split-list body '->) ; Hakell lambda
         `(destructuring-lambda ,vars ,@forms)) 
       `(destructuring-lambda ,(car body) ,@(cadr body)))) ; Lispy lambda definition)
+
+(defmacro destructuring-let (vars &body body)
+  "A variant of let* directly supporting destructuring binds."
+  'false)
