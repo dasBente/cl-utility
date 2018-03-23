@@ -62,23 +62,47 @@
         `(lambda ,symbs ,@body))))
 
 
-(defun split-list (lst delimiter)
-  "Split a list at a given delimiter"
+(defun split-until (lst until)
+  "Split a list into all elements found until and after a condition is met"
   (let (split left right)
     (loop for l in lst do
-         (cond ((eql l delimiter) (setf split t))
+         (cond ((funcall until l) (progn (setf split t)
+                                         (setf right (cons l right))))
                (split (setf right (cons l right)))
                (t (setf left (cons l left))))
        finally (return (list (nreverse left) (nreverse right))))))
 
 
+(defun split-delimited (lst delimiter)
+  "Split a list at a given delimiter"
+  (let ((res (split-until lst (lambda (l) (eql l delimiter)))))
+    (list (car res) (cdadr res))))
+
+
 (defmacro \\ (&body body)
   "Haskell style lambda. Shorthand for destructuring-lambda, with or without Haskell style syntax."
   (if (find '-> body) 
-      (destructuring-bind (vars forms) (split-list body '->) ; Hakell lambda
+      (destructuring-bind (vars forms) (split-delimited body '->) ; Hakell lambda
         `(destructuring-lambda ,vars ,@forms)) 
       `(destructuring-lambda ,(car body) ,@(cadr body)))) ; Lispy lambda definition)
 
+
+(defmacro destructure* (to-destruct &body body)
+  "Takes a list to-destruct and destructures all of it's elements."
+  (if to-destruct
+      (destructuring-bind ((pattern &optional form) &rest rest) to-destruct
+        `(destructuring-bind ,pattern ,form (destructure* ,rest ,@body)))
+      `(progn ,@body)))
+
+
 (defmacro destructuring-let (vars &body body)
   "A variant of let* directly supporting destructuring binds."
-  'false)
+  (let* ((arg-split (split-until vars (lambda (l) (and (not (atom l)) (listp (car l)))))))
+    (destructuring-bind (simple-args rest) arg-split
+      (if simple-args
+          `(let* ,simple-args (destructuring-let ,rest ,@body))
+          (let* ((rest-split (split-until rest (lambda (l) (or (atom l) (not (listp (car l))))))))
+            (destructuring-bind (to-dest new-rest) rest-split
+              (if to-dest
+                  `(destructure* ,to-dest (destructuring-let ,new-rest ,@body))
+                  `(progn ,@body))))))))

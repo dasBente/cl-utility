@@ -2,7 +2,7 @@
 
 (in-package #:cl-utility/tests)
 
-(plan 8)
+(plan 9)
 
 #|
 The f-or function is meant to be a variant of the or macro to be used in higher order functions.
@@ -116,7 +116,6 @@ The destructuring-let macro employs destructuring directly within a let* form.
   (is (destructuring-let ((a '(1)) (b (car a))) b) 1))
 
 (subtest "Testing destructuring-let - Destructuring"
-  (is (destructuring-let ((&rest a)) a) nil)
   (let ((lst '(1 (2 3) 4 5)))
     (is (destructuring-let (((a (b c) d e) lst)) (list a b c d e)) '(1 2 3 4 5))
     (is (destructuring-let (((a b &rest c) lst)) (list a b c)) '(1 (2 3) (4 5))))
@@ -127,5 +126,11 @@ The destructuring-let macro employs destructuring directly within a let* form.
     (is (destructuring-let (((a b c &optional (d 4)) lst)) (list a b c d)) '(1 2 3 4))
     (is (destructuring-let (((a b &optional (c t)) lst)) (list a b c)) '(1 2 3))
     (is (destructuring-let (((a b &optional (c t) (d 4)) lst)) (list a b c d)) '(1 2 3 4))))
+
+(subtest "Testing destructuring-let - Mixed variable bindings"
+  (is (destructuring-let (a ((b c) '(1 2)) (d 3)) (list a b c d)) '(nil 1 2 3))
+  (is (destructuring-let ((a '(1 2)) ((b c) a)) (list a b c)) '((1 2) 1 2))
+  (is (destructuring-let (((a b) '((1 2) 3)) ((c d) a) (e (+ 3 b))) (list a b c d e))
+      '((1 2) 3 1 2 6)))
 
 (finalize)
